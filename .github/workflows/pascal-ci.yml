@@ -47,6 +47,14 @@ jobs:
           restore-keys: |
             lazarus-install-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-fpc-${{ env.FPC_VERSION }}-
 
+      - name: Cache Cheat Engine build units
+        uses: actions/cache@v4
+        with:
+          path: Cheat Engine/lib
+          key: ce-lib-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-${{ env.FPC_VERSION }}-${{ hashFiles('Cheat Engine/**/*.pas', 'Cheat Engine/**/*.pp', 'Cheat Engine/**/*.inc', 'Cheat Engine/**/*.lpi', 'Cheat Engine/**/*.lpk') }}
+          restore-keys: |
+            ce-lib-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-${{ env.FPC_VERSION }}-
+
       - name: Install Lazarus and Free Pascal
         shell: pwsh
         run: |
