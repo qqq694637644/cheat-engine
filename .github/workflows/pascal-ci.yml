@@ -1,0 +1,90 @@
+name: Pascal CI
+
+on:
+  push:
+    branches:
+      - master
+      - 'gpt/**'
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lazarus-windows:
+    name: Build Pascal projects on Windows
+    runs-on: windows-2022
+    timeout-minutes: 60
+
+    env:
+      LAZARUS_VERSION: 2.2.2
+      FPC_VERSION: 3.2.2
+      LAZARUS_DIR: C:\lazarus
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Lazarus and Free Pascal
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+
+          $installer = "lazarus-$env:LAZARUS_VERSION-fpc-$env:FPC_VERSION-win64.exe"
+          $downloadUrl = "https://download.lazarus-ide.org/Lazarus%20Windows%2064%20bits/Lazarus%20$env:LAZARUS_VERSION/$installer"
+          $installerPath = Join-Path $env:RUNNER_TEMP $installer
+
+          Write-Host "Downloading $installer"
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath
+
+          Write-Host "Installing Lazarus to $env:LAZARUS_DIR"
+          Start-Process -FilePath $installerPath -ArgumentList @(
+            '/VERYSILENT',
+            '/SUPPRESSMSGBOXES',
+            '/NORESTART',
+            "/DIR=$env:LAZARUS_DIR"
+          ) -Wait -NoNewWindow
+
+          if (-not (Test-Path "$env:LAZARUS_DIR\lazbuild.exe")) {
+            throw "lazbuild.exe was not installed at $env:LAZARUS_DIR"
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $env:LAZARUS_DIR
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:LAZARUS_DIR\fpc\$env:FPC_VERSION\bin\x86_64-win64"
+
+      - name: Show Pascal toolchain versions
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & "$env:LAZARUS_DIR\lazbuild.exe" --version
+          & "$env:LAZARUS_DIR\fpc\$env:FPC_VERSION\bin\x86_64-win64\fpc.exe" -iV
+
+      - name: Build Cheat Engine Pascal project
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & "$env:LAZARUS_DIR\lazbuild.exe" `
+            --build-all `
+            --build-mode="Release 64-Bit" `
+            "Cheat Engine\cheatengine.lpi"
+
+      - name: List build output
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path 'Cheat Engine\bin') {
+            Get-ChildItem 'Cheat Engine\bin' -Recurse | Select-Object FullName, Length, LastWriteTime
+          } else {
+            Write-Host 'Cheat Engine\bin was not created.'
+          }
+
+      - name: Upload Pascal build output
+        if: success() && hashFiles('Cheat Engine/bin/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: cheat-engine-pascal-bin
+          path: Cheat Engine/bin/
