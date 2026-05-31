@@ -9,7 +9,8 @@ the build targets documented in README.md.
 It intentionally avoids requiring Lazarus, Visual Studio, GCC, or Make so it can
 run in lightweight CI environments as a fast smoke test before heavier builds.
 Use --strict-missing-references when you want unresolved project-file references
-to fail the command instead of being reported as warnings.
+to fail the command instead of being reported as warnings. This keeps the
+default mode suitable for quick repository interface smoke tests.
 """
 
 from __future__ import annotations
