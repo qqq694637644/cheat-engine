@@ -23,10 +23,17 @@ jobs:
       LAZARUS_VERSION: 2.2.2
       FPC_VERSION: 3.2.2
       LAZARUS_DIR: C:\lazarus
+      LAZARUS_INSTALLER_SHA256: 3AECCE3F12F9C1824DCB149142ABFBAEE4E162A2624E62CB0ECD9B7C2142B7E3
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Cache Lazarus installer
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}\lazarus-installers
+          key: lazarus-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-fpc-${{ env.FPC_VERSION }}-win64-${{ env.LAZARUS_INSTALLER_SHA256 }}
 
       - name: Install Lazarus and Free Pascal
         shell: pwsh
@@ -36,10 +43,27 @@ jobs:
 
           $installer = "lazarus-$env:LAZARUS_VERSION-fpc-$env:FPC_VERSION-win64.exe"
           $downloadUrl = "https://download.lazarus-ide.org/Lazarus%20Windows%2064%20bits/Lazarus%20$env:LAZARUS_VERSION/$installer"
-          $installerPath = Join-Path $env:RUNNER_TEMP $installer
+          $installerDir = Join-Path $env:RUNNER_TEMP 'lazarus-installers'
+          $installerPath = Join-Path $installerDir $installer
 
-          Write-Host "Downloading $installer"
-          Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath
+          New-Item -ItemType Directory -Force -Path $installerDir | Out-Null
+
+          if (Test-Path $installerPath) {
+            Write-Host "Using cached $installer"
+          } else {
+            Write-Host "Downloading $installer"
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath
+          }
+
+          $actualHash = (Get-FileHash -Algorithm SHA256 -Path $installerPath).Hash.ToUpperInvariant()
+          $expectedHash = $env:LAZARUS_INSTALLER_SHA256.ToUpperInvariant()
+
+          if ($actualHash -ne $expectedHash) {
+            Remove-Item -Force $installerPath -ErrorAction SilentlyContinue
+            throw "SHA256 mismatch for $installer. Expected $expectedHash but got $actualHash."
+          }
+
+          Write-Host "Verified $installer SHA256: $actualHash"
 
           Write-Host "Installing Lazarus to $env:LAZARUS_DIR"
           Start-Process -FilePath $installerPath -ArgumentList @(
