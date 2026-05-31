@@ -39,8 +39,13 @@ jobs:
         id: lazarus-cache
         uses: actions/cache@v4
         with:
-          path: C:\lazarus
-          key: lazarus-install-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-fpc-${{ env.FPC_VERSION }}
+          path: |
+            C:\lazarus
+            C:\Users\runneradmin\AppData\Local\lazarus
+            C:\Users\runneradmin\AppData\Local\FreePascal
+          key: lazarus-install-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-fpc-${{ env.FPC_VERSION }}-${{ hashFiles('**/*.lpk') }}
+          restore-keys: |
+            lazarus-install-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-fpc-${{ env.FPC_VERSION }}-
 
       - name: Install Lazarus and Free Pascal
         shell: pwsh
