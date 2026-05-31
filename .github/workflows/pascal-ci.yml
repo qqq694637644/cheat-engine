@@ -119,7 +119,6 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           & "$env:LAZARUS_DIR\lazbuild.exe" `
-            --build-all `
             --build-mode="Release 64-Bit" `
             "Cheat Engine\cheatengine.lpi"
 
