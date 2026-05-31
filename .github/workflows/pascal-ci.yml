@@ -35,6 +35,13 @@ jobs:
           path: ${{ runner.temp }}\lazarus-installers
           key: lazarus-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-fpc-${{ env.FPC_VERSION }}-win64-${{ env.LAZARUS_INSTALLER_SHA256 }}
 
+      - name: Cache installed Lazarus
+        id: lazarus-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\lazarus
+          key: lazarus-install-${{ runner.os }}-${{ runner.arch }}-${{ env.LAZARUS_VERSION }}-fpc-${{ env.FPC_VERSION }}
+
       - name: Install Lazarus and Free Pascal
         shell: pwsh
         run: |
@@ -64,6 +71,13 @@ jobs:
           }
 
           Write-Host "Verified $installer SHA256: $actualHash"
+
+          if ('${{ steps.lazarus-cache.outputs.cache-hit }}' -eq 'true' -and (Test-Path "$env:LAZARUS_DIR\lazbuild.exe")) {
+            Write-Host 'Using cached Lazarus installation'
+            Add-Content -Path $env:GITHUB_PATH -Value $env:LAZARUS_DIR
+            Add-Content -Path $env:GITHUB_PATH -Value "$env:LAZARUS_DIR\fpc\$env:FPC_VERSION\bin\x86_64-win64"
+            exit 0
+          }
 
           Write-Host "Installing Lazarus to $env:LAZARUS_DIR"
           Start-Process -FilePath $installerPath -ArgumentList @(
